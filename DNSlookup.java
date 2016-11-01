@@ -50,7 +50,41 @@ public class DNSlookup {
 		
 		// Start adding code here to initiate the lookup
 		
-		byte[] query = generateQuery(fqdn);
+		byte[] outputBuffer = generateQuery(fqdn);
+		
+		byte[] inputBuffer = sendPacket(outputBuffer);
+		
+	}
+
+	private static byte[] sendPacket(byte[] outputBuffer) throws SocketException, IOException {
+		
+		DatagramSocket socket = new DatagramSocket();
+		
+		DatagramPacket packet = new DatagramPacket(outputBuffer, outputBuffer.length, 
+												   rootNameServer, portNumber);
+		
+		socket.connect(rootNameServer, portNumber);
+		socket.send(packet);
+		
+		byte[] inputBuffer = new byte[1024];
+		DatagramPacket response = new DatagramPacket(inputBuffer, inputBuffer.length);
+		
+		socket.setSoTimeout(5000);
+		socket.receive(response);
+		
+		System.out.println(Arrays.toString(inputBuffer));
+		
+		while((outputBuffer[0] != inputBuffer[0]) && (outputBuffer[1] != inputBuffer[1])) {
+			
+			response = new DatagramPacket(inputBuffer, inputBuffer.length);
+			socket.setSoTimeout(5000);
+			socket.receive(response);
+			
+		}
+		
+		socket.close();
+		
+		return inputBuffer;
 		
 	}
 
@@ -115,11 +149,6 @@ public class DNSlookup {
 		System.out.println(Arrays.toString(query));
 		
 		return query;
-	}
-
-	private static Object generateQName(String fqdn) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 	private static void usage() {

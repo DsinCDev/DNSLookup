@@ -1,7 +1,12 @@
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.net.SocketException;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -19,11 +24,13 @@ public class DNSlookup {
 	static final int MIN_PERMITTED_ARGUMENT_COUNT = 2;
 	static boolean tracingOn = false;
 	static InetAddress rootNameServer;
+	static int portNumber = 53;
 	
 	/**
 	 * @param args
 	 */
 	public static void main(String[] args) throws Exception {
+		
 		String fqdn;
 		DNSResponse response; // Just to force compilation
 		int argCount = args.length;
@@ -43,21 +50,26 @@ public class DNSlookup {
 		
 		// Start adding code here to initiate the lookup
 		
+		ByteArrayOutputStream query = new ByteArrayOutputStream();
+		
 		// Header Section
 		
 		// Generate Query ID
 		Random rng = new Random();
 		int randomInteger = rng.nextInt(65536);
-		ByteBuffer bb = ByteBuffer.allocate(2);
-		byte[] qID = bb.putInt(randomInteger).array();
+		
+		query.write(randomInteger);
 		
 		// The rest of the header
 		byte[] rest = new byte[] { (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x01, (byte)0x00, 
 								  (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00 };
 		
-		byte[] header = new byte[qID.length + rest.length];
-		System.arraycopy(qID, 0, header, 0, qID.length);
-		System.arraycopy(rest, 0, header, qID.length, rest.length);
+		query.write(rest);
+		
+		byte[] outputBuffer = new byte[256];
+		outputBuffer = query.toByteArray();
+		
+		System.out.println(Arrays.toString(outputBuffer));
 		
 		// Question Section
 		

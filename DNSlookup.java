@@ -50,29 +50,76 @@ public class DNSlookup {
 		
 		// Start adding code here to initiate the lookup
 		
-		ByteArrayOutputStream query = new ByteArrayOutputStream();
+		byte[] query = generateQuery(fqdn);
 		
+	}
+
+	private static byte[] generateQuery(String fqdn) throws IOException {
 		// Header Section
 		
 		// Generate Query ID
 		Random rng = new Random();
 		int randomInteger = rng.nextInt(65536);
 		
-		query.write(randomInteger);
+		byte[] qID = new byte[] { (byte)randomInteger };
 		
 		// The rest of the header
 		byte[] rest = new byte[] { (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x01, (byte)0x00, 
 								  (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00 };
 		
-		query.write(rest);
+		byte[] header = new byte[qID.length + rest.length];
+		System.arraycopy(qID, 0, header, 0, qID.length);
+		System.arraycopy(rest, 0, header, qID.length, rest.length);
 		
-		byte[] outputBuffer = new byte[256];
-		outputBuffer = query.toByteArray();
-		
-		System.out.println(Arrays.toString(outputBuffer));
+		System.out.println(Arrays.toString(header));
 		
 		// Question Section
 		
+		String[] fqdnParts = fqdn.split("\\.");
+		int length = fqdnParts.length;
+		int counter = 0;
+		
+		for (int i = 0; i < length; i++) {
+			counter += fqdnParts[i].length();
+		}
+		
+		byte[] qName = new byte[length + counter];
+		
+		ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+		
+		for (int i = 0; i < length; i++) {
+			outputStream.write((byte) fqdnParts[i].length()); 
+			outputStream.write(fqdnParts[i].getBytes());
+		}
+		
+		// End of stream
+		outputStream.write((byte) 0x00);
+		
+		qName = outputStream.toByteArray();
+		
+		byte[] qType = new byte[] { (byte) 0x00, (byte) 0x01 };
+		
+		byte[] qClass = new byte[] { (byte) 0x00, (byte) 0x01 };
+		
+		ByteArrayOutputStream qStream = new ByteArrayOutputStream();
+		qStream.write(qName);
+		qStream.write(qType);
+		qStream.write(qClass);
+		
+		byte[] question = qStream.toByteArray();
+		
+		byte[] query = new byte[header.length + question.length];
+		System.arraycopy(header, 0, query, 0, header.length);
+		System.arraycopy(question, 0, query, header.length, question.length);
+		
+		System.out.println(Arrays.toString(query));
+		
+		return query;
+	}
+
+	private static Object generateQName(String fqdn) {
+		// TODO Auto-generated method stub
+		return null;
 	}
 
 	private static void usage() {

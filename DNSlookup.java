@@ -1,6 +1,7 @@
 
 import java.net.DatagramSocket;
 import java.net.InetAddress;
+import java.nio.ByteBuffer;
 import java.util.Random;
 
 /**
@@ -33,12 +34,32 @@ public class DNSlookup {
 		}
 
 		rootNameServer = InetAddress.getByName(args[0]);
+		// Convert to bytes
+		byte[] ipByte = rootNameServer.getAddress();
 		fqdn = args[1];
 		
 		if (argCount == 3 && args[2].equals("-t"))
 				tracingOn = true;
 		
 		// Start adding code here to initiate the lookup
+		
+		// Header Section
+		
+		// Generate Query ID
+		Random rng = new Random();
+		int randomInteger = rng.nextInt(65536);
+		ByteBuffer bb = ByteBuffer.allocate(2);
+		byte[] qID = bb.putInt(randomInteger).array();
+		
+		// The rest of the header
+		byte[] rest = new byte[] { (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x01, (byte)0x00, 
+								  (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x00 };
+		
+		byte[] header = new byte[qID.length + rest.length];
+		System.arraycopy(qID, 0, header, 0, qID.length);
+		System.arraycopy(rest, 0, header, qID.length, rest.length);
+		
+		// Question Section
 		
 	}
 

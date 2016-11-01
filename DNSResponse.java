@@ -38,6 +38,7 @@ public class DNSResponse {
 	    // The following are probably some of the things 
 	    // you will need to do.
 	    // Extract the query ID
+		
 
 	    // Make sure the message is a query response and determine
 	    // if it is an authoritative response or note

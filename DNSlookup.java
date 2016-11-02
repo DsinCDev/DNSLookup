@@ -24,7 +24,7 @@ public class DNSlookup {
 	static final int MIN_PERMITTED_ARGUMENT_COUNT = 2;
 	static boolean tracingOn = false;
 	static InetAddress rootNameServer;
-	static int portNumber = 53;
+	static int portNumber = 53;   
 	
 	/**
 	 * @param args
@@ -53,6 +53,8 @@ public class DNSlookup {
 		byte[] outputBuffer = generateQuery(fqdn);
 		
 		byte[] inputBuffer = sendPacket(outputBuffer);
+		
+		response = new DNSResponse(inputBuffer, inputBuffer.length);
 		
 	}
 
@@ -93,9 +95,9 @@ public class DNSlookup {
 		
 		// Generate Query ID
 		Random rng = new Random();
-		int randomInteger = rng.nextInt(65536);
+		int randomInteger = rng.nextInt(65336);
 		
-		byte[] qID = new byte[] { (byte)randomInteger };
+		byte[] qID = new byte[] { (byte) ((randomInteger >> 8) & 0x00ff), (byte) (randomInteger & 0x00ff) };
 		
 		// The rest of the header
 		byte[] rest = new byte[] { (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x01, (byte)0x00, 

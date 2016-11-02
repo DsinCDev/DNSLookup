@@ -13,10 +13,27 @@ import java.net.InetAddress;
 
 
 public class DNSResponse {
-    private int queryID;                  // this is for the response it must match the one in the request 
-    private int answerCount = 0;          // number of answers  
+    
+	// Variables for decoded bytes
+	public static byte[] queryIDBytes = new byte[2];
+    public static byte[] indicationBytes = new byte[1];
+    public static byte[] rcodeBytes = new byte[1];
+    public static byte[] queryCountBytes = new byte[2];
+    public static byte[] answerCountBytes = new byte[2];
+    public static byte[] nameServerBytes = new byte[2];
+    public static byte[] additionalRecordBytes = new byte[2];
+	
+	// Variables for decoding
+	public static boolean isResponse;
+	public static boolean isAuthoratative;
+    public static boolean isRecursionCapable;
+    public static int errorFound;
+    public static int queryCount;
+    public static int answerCount;
+    public static int extraInfoCount;
+    public static int nsCount; 
+    
     private boolean decoded = false;      // Was this response successfully decoded
-    private int nsCount = 0;              // number of nscount response records
     private int additionalCount = 0;      // number of additional (alternate) response records
     private boolean authoritative = false;// Is this an authoritative record
 
@@ -34,20 +51,42 @@ public class DNSResponse {
     // probably the minimum that you need.
 
 	public DNSResponse (byte[] data, int len) {
-	    
-	    // The following are probably some of the things 
-	    // you will need to do.
-	    // Extract the query ID
 		
-
-	    // Make sure the message is a query response and determine
-	    // if it is an authoritative response or note
-
-	    // determine answer count
-
-	    // determine NS Count
-
-	    // determine additional record count
+		byte[] responseHeader = new byte[12];
+		int responseLength = data.length;
+		int bodyCounter = 0;
+		byte[] responseBody = new byte[responseLength - 12];
+		
+		for (int i = 0; i < 12; i++) {
+			responseHeader[i] = data[i];
+		}
+		
+		for (int i = 12; i < responseLength; i++) {
+			responseBody[bodyCounter] = data[i];
+			bodyCounter++;
+		}
+		
+		queryIDBytes[0] = responseHeader[0];
+		queryIDBytes[1] = responseHeader[1];
+		indicationBytes[0] = responseHeader[2];
+        rcodeBytes[0] = responseHeader[3];
+        queryCountBytes[0] = responseHeader[4];
+        queryCountBytes[1] = responseHeader[5];
+        answerCountBytes[0] = responseHeader[6];
+        answerCountBytes[1] = responseHeader[7];
+        nameServerBytes[0] = responseHeader[8];
+        nameServerBytes[1] = responseHeader[9];
+        additionalRecordBytes[0] = responseHeader[10];
+        additionalRecordBytes[1] = responseHeader[11];
+        
+        isResponse = (((indicationBytes[0] & 0x80) >> 7) == 1);
+        isAuthoratative = (((indicationBytes[0] & 0x4) >> 2) == 1);
+        isRecursionCapable = (((rcodeBytes[0] & 0x80) >> 7) == 1);
+        errorFound = (rcodeBytes[0] & 0xF);
+        queryCount = (((int) queryCountBytes[0]) * 16) + (int)queryCountBytes[1];
+        answerCount = (((int) answerCountBytes[0]) * 16) + (int)answerCountBytes[1];
+        extraInfoCount = (((int) additionalRecordBytes[0]) * 16) + (int)additionalRecordBytes[1];
+        nsCount = (((int) nameServerBytes[0]) * 16) + (int)nameServerBytes[1];
 
 	    // Extract list of answers, name server, and additional information response 
 	    // records

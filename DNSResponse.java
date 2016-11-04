@@ -1,6 +1,8 @@
 
+import java.io.UnsupportedEncodingException;
 import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 
 
 
@@ -16,21 +18,16 @@ import java.nio.ByteBuffer;
 public class DNSResponse {
     
 	private int byteNo = 0;
+	private int queryID;
+	private int responseID;
 	
-	// Variables for decoded bytes
-	public static byte[] queryIDBytes = new byte[2];
-    public static byte[] indicationBytes = new byte[1];
-    public static byte[] rcodeBytes = new byte[1];
-    public static byte[] queryCountBytes = new byte[2];
-    public static byte[] answerCountBytes = new byte[2];
-    public static byte[] nameServerBytes = new byte[2];
-    public static byte[] additionalRecordBytes = new byte[2];
+	private ArrayList<String> answerList = new ArrayList<String>();
     
     private String aaFQDN;
 	
 	// Variables for decoding
 	public static boolean isResponse;
-	public static boolean isAuthoratative;
+	public static boolean isAuthoritative;
     public static boolean isRecursionCapable;
     public static int errorFound;
     public static int queryCount;
@@ -46,9 +43,14 @@ public class DNSResponse {
 
     // When in trace mode you probably want to dump out all the relevant information in a response
 
-	void dumpResponse() {
+	void dumpResponse(InetAddress rootNameServer, String fqdn, boolean tracingOn) {
 		
-		System.out.println("\n\nQuery ID     ");
+		if (tracingOn) {
+			
+		System.out.println("\n\nQuery ID     " + queryID + " " + fqdn + " --> " + rootNameServer);
+		System.out.println("Response ID: " + responseID + " Authoritative " + isAuthoritative);
+		System.out.println("Answers (" + answerCount + ")");
+		}
 
 	}
 
@@ -56,6 +58,8 @@ public class DNSResponse {
     // probably the minimum that you need.
 
 	public DNSResponse (byte[] data, int len, int randomInteger) {
+		
+		queryID = randomInteger;
 		
 		byte[] responseHeader = new byte[12];
 		int responseLength = data.length;
@@ -71,17 +75,26 @@ public class DNSResponse {
 			bodyCounter++;
 		}
 		
-		queryIDBytes[0] = responseHeader[0];
-		queryIDBytes[1] = responseHeader[1];
+		// Variables for decoded bytes
+		byte[] responseIDBytes = new byte[2];
+	    byte[] indicationBytes = new byte[1];
+	    byte[] rcodeBytes = new byte[1];
+	    byte[] queryCountBytes = new byte[2];
+	    byte[] answerCountBytes = new byte[2];
+	    byte[] nameServerBytes = new byte[2];
+	    byte[] additionalRecordBytes = new byte[2];
 		
-		int queryIDInt = queryIDBytes[1] & 0x00ff | (queryIDBytes[0] & 0x00ff) << 8;
+		responseIDBytes[0] = responseHeader[0];
+		responseIDBytes[1] = responseHeader[1];
 		
-		if (queryIDInt != randomInteger) {
+		responseID = responseIDBytes[1] & 0x00ff | (responseIDBytes[0] & 0x00ff) << 8;
+		
+		if (queryID != responseID) {
 			System.out.println("The query ids do not match.");
 			return;
 		}
 		
-		System.out.println(Integer.toString(queryIDInt));
+	//	System.out.println(Integer.toString(queryID));
 		
 		indicationBytes[0] = responseHeader[2];
         rcodeBytes[0] = responseHeader[3];
@@ -95,7 +108,7 @@ public class DNSResponse {
         additionalRecordBytes[1] = responseHeader[11];
         
         isResponse = (((indicationBytes[0] & 0x80) >> 7) == 1);
-        isAuthoratative = (((indicationBytes[0] & 0x4) >> 2) == 1);
+        isAuthoritative = (((indicationBytes[0] & 0x4) >> 2) == 1);
         isRecursionCapable = (((rcodeBytes[0] & 0x80) >> 7) == 1);
         errorFound = (rcodeBytes[0] & 0xF);
         queryCount = (((int) queryCountBytes[0]) * 16) + (int)queryCountBytes[1];
@@ -108,71 +121,105 @@ public class DNSResponse {
         
         aaFQDN = getFQDN(responseBody);
         byteNo += 4; // Ignore Qtype and Qclass
+    //  System.out.println(responseBody[byteNo]);
         
+        getAnswerRecord(responseBody);
+        
+	}
+	
+	private void getAnswerRecord(byte[] responseBody) {
+		
+		for (int i = 0; i < answerCount; i++) {
+			answerList.add(getAnswers(responseBody));
+			
+			int type = (responseBody[byteNo++] << 8) &0xFFFF | responseBody[byteNo++];
+			System.out.println("Type: " + type);
+			
+			int rclass = responseBody[byteNo++] << 8 | responseBody[byteNo++];
+			System.out.println("Rclass: " + rclass);
+			
+			int ttl = 0;
+			for (int j= 0; j < 4; j++) {
+				System.out.println(responseBody[byteNo]);
+				ttl = ttl << 8;
+				ttl |= (responseBody[byteNo++] & 0xFF);
+			}
+			System.out.println("TTL: " + ttl);
+			
+			int rdlength = responseBody[byteNo++] << 8 | responseBody[byteNo++];
+			System.out.println("RDLength: " + rdlength);
+		}
+		
+	}
+	
+	private String getAnswers(byte[] responseBody) {
+		return getFQDN(responseBody);
+	}
+
+	private String getCompressedFQDN(String fqdn, byte[] data, int offset) {
+		boolean firstTime = true;
+
+		try {
+			for (int cnt = (data[offset++] &0xff); cnt != 0; cnt = (data[offset++] &0xff)) {
+		//		System.out.println(cnt);
+				
+				if (!firstTime) {
+					fqdn += '.';
+				} 
+				
+				else {
+					firstTime = false;
+				}
+
+				for (int i = 0; i < cnt; i++) {
+					fqdn = fqdn + (char) data[offset++];
+				}
+
+			}
+		} catch (Exception e) {
+			System.out.println("Something is wrong");
+		}
+
+		return fqdn;
 	}
 
 	private String getFQDN(byte[] responseBody) {
 		String fqdn = new String();
 		boolean firstTime = true;
 		try {
-			for (int cnt = (responseBody[byteNo++] & 0xff); cnt != 0; cnt = (responseBody[byteNo++] & 0xff)) {
-
+			for (int cnt = (responseBody[byteNo++] &0xff); cnt != 0; cnt = (responseBody[byteNo++] & 0xff)) {
+				
+		//		System.out.println(cnt);
 				if (!firstTime) { 
 					fqdn += '.';
-				} else {
+				} 
+				
+				else {
 					firstTime = false;
 				}
 
+				
 				if ((cnt & 0xC0) > 0) {
-					cnt = (cnt &0x3f) << 8;
-					cnt |= (responseBody[byteNo++] & 0xff);
-					fqdn = getCompressedFQDN(fqdn, responseBody, cnt);
+					cnt = (cnt &0x3f) << 8 | responseBody[byteNo++] & 0xff;
+					fqdn = getCompressedFQDN(fqdn, responseBody, cnt - 12);
 					break;
-				} else {
+				}
+				
+				else {
 					for (int i = 0; i < cnt; i++) {
 						fqdn += (char) responseBody[byteNo++];
 					}
 				}
+				
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-			System.out.println("Error");
+			System.out.println("Exception");
 		}
-
+		
 		System.out.println(fqdn);
 		return fqdn;
 	}
-
-	private String getCompressedFQDN(String fqdn, byte[] responseBody, int offset) {
-		boolean firstTime = true;
-
-		try {
-			for (int cnt = (responseBody[offset++] &0xff); cnt != 0; cnt = (responseBody[offset++] &0xff)) {
-				if (!firstTime) {
-					fqdn += '.';
-				} else {
-					firstTime = false;
-				}
-
-				if ((cnt & 0xC0) > 0) {
-					cnt = (cnt & 0x3f) << 8;
-					cnt |= (responseBody[offset++] & 0xff);
-					fqdn = getCompressedFQDN(fqdn, responseBody, cnt);
-					break;
-				} else {
-
-					for (int i = 0; i < cnt; i++) {
-						fqdn = fqdn + (char) responseBody[offset++];
-					}
-				}
-			}
-		} catch (Exception e) {
-			System.out.println("Error");
-		}
-
-		return fqdn;
-	}
-
 
     // You will probably want a methods to extract a compressed FQDN, IP address
     // cname, authoritative DNS servers and other values like the query ID etc.
@@ -182,6 +229,6 @@ public class DNSResponse {
     // the important values they are returning. Note that an IPV6 reponse record
     // is of type 28. It probably wouldn't hurt to have a response record class to hold
     // these records. 
-}
 
+}
 

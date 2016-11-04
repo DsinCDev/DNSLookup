@@ -63,6 +63,8 @@ public class DNSlookup {
 		
 		response = new DNSResponse(inputBuffer, inputBuffer.length, randomInteger);
 		
+		response.dumpResponse(rootNameServer, fqdn, tracingOn);
+		
 	}
 
 	private static byte[] sendPacket(byte[] outputBuffer) throws SocketException, IOException {
@@ -108,8 +110,8 @@ public class DNSlookup {
 		System.arraycopy(qID, 0, header, 0, qID.length);
 		System.arraycopy(rest, 0, header, qID.length, rest.length);
 		
-		System.out.println(Arrays.toString(header));
-		
+	//	System.out.println(Arrays.toString(header));
+
 		// Question Section
 		
 		String[] fqdnParts = fqdn.split("\\.");

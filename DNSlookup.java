@@ -50,11 +50,18 @@ public class DNSlookup {
 		
 		// Start adding code here to initiate the lookup
 		
-		byte[] outputBuffer = generateQuery(fqdn);
+		// Generate Query ID
+		Random rng = new Random();
+		int randomInteger = rng.nextInt(65336);
+		System.out.println(Integer.toString(randomInteger));
+				
+		byte[] qID = new byte[] { (byte) ((randomInteger >> 8) ), (byte) (randomInteger & 0x00ff) };
+		
+		byte[] outputBuffer = generateQuery(fqdn, qID);
 		
 		byte[] inputBuffer = sendPacket(outputBuffer);
 		
-		response = new DNSResponse(inputBuffer, inputBuffer.length);
+		response = new DNSResponse(inputBuffer, inputBuffer.length, randomInteger);
 		
 	}
 
@@ -90,14 +97,8 @@ public class DNSlookup {
 		
 	}
 
-	private static byte[] generateQuery(String fqdn) throws IOException {
+	private static byte[] generateQuery(String fqdn, byte[] qID) throws IOException {
 		// Header Section
-		
-		// Generate Query ID
-		Random rng = new Random();
-		int randomInteger = rng.nextInt(65336);
-		
-		byte[] qID = new byte[] { (byte) ((randomInteger >> 8) & 0x00ff), (byte) (randomInteger & 0x00ff) };
 		
 		// The rest of the header
 		byte[] rest = new byte[] { (byte)0x00, (byte)0x00, (byte)0x00, (byte)0x01, (byte)0x00, 

@@ -5,8 +5,6 @@ import java.net.DatagramPacket;
 import java.net.DatagramSocket;
 import java.net.InetAddress;
 import java.net.SocketException;
-import java.nio.ByteBuffer;
-import java.util.Arrays;
 import java.util.Random;
 
 /**
@@ -24,6 +22,8 @@ public class DNSlookup {
 	static final int MIN_PERMITTED_ARGUMENT_COUNT = 2;
 	static boolean tracingOn = false;
 	static InetAddress rootNameServer;
+	static InetAddress rootNameServerOriginal;
+	static String fqdnOriginal;
 	static int portNumber = 53;   
 	
 	/**
@@ -32,7 +32,6 @@ public class DNSlookup {
 	public static void main(String[] args) throws Exception {
 		
 		String fqdn;
-		DNSResponse response; // Just to force compilation
 		int argCount = args.length;
 		
 		if (argCount < 2 || argCount > 3) {
@@ -41,29 +40,68 @@ public class DNSlookup {
 		}
 
 		rootNameServer = InetAddress.getByName(args[0]);
+		rootNameServerOriginal = rootNameServer;
 		// Convert to bytes
-		byte[] ipByte = rootNameServer.getAddress();
 		fqdn = args[1];
+		fqdnOriginal = fqdn;
 		
 		if (argCount == 3 && args[2].equals("-t"))
 				tracingOn = true;
 		
 		// Start adding code here to initiate the lookup
 		
+		generateQuery(fqdn);
+		
+	}
+	
+	private static int generateRandom() {
 		// Generate Query ID
 		Random rng = new Random();
 		int randomInteger = rng.nextInt(65336);
-		System.out.println(Integer.toString(randomInteger));
-				
+	//	System.out.println(Integer.toString(randomInteger));
+		return randomInteger;
+	}
+
+	private static void generateQuery(String fqdn) throws IOException, SocketException {
+		
+		int randomInteger = generateRandom();
+		
 		byte[] qID = new byte[] { (byte) ((randomInteger >> 8) ), (byte) (randomInteger & 0x00ff) };
 		
 		byte[] outputBuffer = generateQuery(fqdn, qID);
 		
+		sendQuery(fqdn, randomInteger, outputBuffer);
+		
+	}
+
+	private static void sendQuery(String fqdn, int randomInteger, byte[] outputBuffer)
+			throws SocketException, IOException {
+		
 		byte[] inputBuffer = sendPacket(outputBuffer);
 		
-		response = new DNSResponse(inputBuffer, inputBuffer.length, randomInteger);
+		DNSResponse response = new DNSResponse(inputBuffer, inputBuffer.length, randomInteger, fqdnOriginal);
 		
-		response.dumpResponse(rootNameServer, fqdn, tracingOn);
+		int reQuery = response.dumpResponse(rootNameServer, fqdn, tracingOn);
+		
+		if (reQuery == 1) {
+			String[] nextQuery = response.getNextQuery(1);
+			rootNameServer = InetAddress.getByName(nextQuery[4]);
+			generateQuery(fqdn);
+		}
+		
+		else if (reQuery == 2) {
+			String[] nextQuery = response.getNextQuery(2);
+			rootNameServer = rootNameServerOriginal;
+			fqdn = nextQuery[4];
+			generateQuery(fqdn);
+		}
+		
+		else if (reQuery == 3) {
+			String[] nextQuery = response.getNextQuery(3);
+			rootNameServer = rootNameServerOriginal;
+			fqdn = nextQuery[4];
+			generateQuery(fqdn);
+		}
 		
 	}
 
@@ -83,7 +121,7 @@ public class DNSlookup {
 		socket.setSoTimeout(5000);
 		socket.receive(response);
 		
-		System.out.println(Arrays.toString(inputBuffer));
+	//	System.out.println(Arrays.toString(inputBuffer));
 		
 		while((outputBuffer[0] != inputBuffer[0]) && (outputBuffer[1] != inputBuffer[1])) {
 			
@@ -151,9 +189,13 @@ public class DNSlookup {
 		System.arraycopy(header, 0, query, 0, header.length);
 		System.arraycopy(question, 0, query, header.length, question.length);
 		
-		System.out.println(Arrays.toString(query));
+	//	System.out.println(Arrays.toString(query));
 		
 		return query;
+	}
+	
+	public static String getFQDN() {
+		return fqdnOriginal;
 	}
 
 	private static void usage() {

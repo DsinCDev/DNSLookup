@@ -1,9 +1,11 @@
-Total before late penalty: [/58]
+Total before late penalty: [15/58]
 
 NOTE: in the marking report something left blank (e.g.  [ /6]) typically means
 that you got full marks for that item. 
 
-Functionality: [/28]
+Functionality: [0/28]
+
+   - no query functionality works
 
    [/2] Basic query to a name server that is authoritative.
    	(e.g. www.cs.ubc.ca to 198.162.35.1)
@@ -34,7 +36,7 @@ Functionality: [/28]
    are printed.
 
 
-Error Handling: [/8]
+Error Handling: [0/8]
 
    In this next section there is 1 mark for detecting the error and
    another for properly printing the output
@@ -47,16 +49,16 @@ Error Handling: [/8]
 
    [/2] Other types of errors (e.g. ca)
 
-Tracing: [/13]
+Tracing: [6/13]
 
-  [/2] Prints query ID, server being queried and FQDN
+  [2/2] Prints query ID, server being queried and FQDN
   
-  [/1] Query ID is different for every query during a run
+  [1/1] Query ID is different for every query during a run
   
-  [/1] Prints Response ID line, with query ID and whether or not this
+  [1/1] Prints Response ID line, with query ID and whether or not this
        is an authoritative response
 
-  [/2] Prints the counts for the Answers, Namservers, and Additional
+  [2/2] Prints the counts for the Answers, Namservers, and Additional
   Information fields. Format is as required
 
   Printing of the Response Records
@@ -69,7 +71,7 @@ Tracing: [/13]
 
   [/1] Prints TTL
 
-Broad Marking Criteria :                     [/9] 
+Broad Marking Criteria :                     [9/9] 
 See below for a detailed description of
 this marking criteria
      Readability        [/3]
@@ -78,6 +80,8 @@ this marking criteria
 
 
 MARKER'S ADDITIONAL COMMENTS:
+- incomplete assignment still displays testing outputs
+- good start, just needed more time to do it
 
 
 
